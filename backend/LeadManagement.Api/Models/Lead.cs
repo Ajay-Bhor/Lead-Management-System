@@ -18,7 +18,7 @@ namespace LeadManagement.Api.Models
         public string? Company { get; set; }
         
         [Required]
-        public string Status { get; set; } = "New"; // New, Contacted, Qualified, Closed
+        public string Status { get; set; } = "New"; // New, Contacted, Qualified, Proposal Sent, Won, Lost
         
         [Required]
         public string Source { get; set; } = "Website forms";

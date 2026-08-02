@@ -82,7 +82,9 @@ const AddLeadModal = ({ isOpen, onClose }) => {
                 <option value="New">New</option>
                 <option value="Contacted">Contacted</option>
                 <option value="Qualified">Qualified</option>
-                <option value="Closed">Closed</option>
+                <option value="Proposal Sent">Proposal Sent</option>
+                <option value="Won">Won</option>
+                <option value="Lost">Lost</option>
               </select>
             </div>
             <div style={{ flex: 1 }}>

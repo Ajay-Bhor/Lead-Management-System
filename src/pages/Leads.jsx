@@ -116,7 +116,9 @@ const LeadRow = ({ lead, onUpdateStatus, onDelete }) => {
       case 'New': return { bg: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-primary)' };
       case 'Contacted': return { bg: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' };
       case 'Qualified': return { bg: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' };
-      case 'Closed': return { bg: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' };
+      case 'Proposal Sent': return { bg: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa' }; // Purple
+      case 'Won': return { bg: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }; // Solid Green
+      case 'Lost': return { bg: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)' }; // Red
       default: return { bg: 'rgba(255, 255, 255, 0.1)', color: 'white' };
     }
   };
@@ -156,7 +158,9 @@ const LeadRow = ({ lead, onUpdateStatus, onDelete }) => {
           <option value="New" style={{ color: '#000' }}>New</option>
           <option value="Contacted" style={{ color: '#000' }}>Contacted</option>
           <option value="Qualified" style={{ color: '#000' }}>Qualified</option>
-          <option value="Closed" style={{ color: '#000' }}>Closed</option>
+          <option value="Proposal Sent" style={{ color: '#000' }}>Proposal Sent</option>
+          <option value="Won" style={{ color: '#000' }}>Won</option>
+          <option value="Lost" style={{ color: '#000' }}>Lost</option>
         </select>
       </td>
       <td style={{ padding: '16px', textAlign: 'right' }}>

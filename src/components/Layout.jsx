@@ -24,7 +24,7 @@ const Layout = ({ children }) => {
             <NavItem icon={<Home size={20} />} label="Dashboard" to="/" active={location.pathname === '/'} />
             <NavItem icon={<Users size={20} />} label="All Leads" to="/leads" active={location.pathname === '/leads'} />
             <NavItem icon={<PieChart size={20} />} label="Analytics" to="/analytics" active={location.pathname === '/analytics'} />
-            <NavItem icon={<Settings size={20} />} label="Settings" to="/settings" active={location.pathname === '/settings'} />
+            <NavItem icon={<Settings size={20} />} label="Team Access" to="/users" active={location.pathname === '/users'} />
           </ul>
         </nav>
       </aside>
