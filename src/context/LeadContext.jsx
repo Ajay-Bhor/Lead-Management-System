@@ -5,7 +5,7 @@ const LeadContext = createContext();
 export const useLeads = () => useContext(LeadContext);
 
 // Change this to your ASP.NET Core API URL
-const API_URL = 'https://localhost:5001/api';
+const API_URL = 'http://localhost:8080/api';
 
 export const LeadProvider = ({ children }) => {
   const [leads, setLeads] = useState([]);

@@ -70,8 +70,8 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        // Requires dotnet ef database update, but EnsureCreated creates schema if none exists.
-        // dbContext.Database.EnsureCreated(); 
+        // Auto-create database schema when running in Docker
+        dbContext.Database.EnsureCreated(); 
     }
     catch (Exception ex)
     {
