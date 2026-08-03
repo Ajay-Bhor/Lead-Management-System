@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Users, Settings, PieChart, Bell, Search } from 'lucide-react';
+import { Home, Users, Settings, PieChart, Bell, Search, CheckSquare } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Layout = ({ children }) => {
@@ -23,6 +23,7 @@ const Layout = ({ children }) => {
           <ul style={{ listStyle: 'none' }}>
             <NavItem icon={<Home size={20} />} label="Dashboard" to="/" active={location.pathname === '/'} />
             <NavItem icon={<Users size={20} />} label="All Leads" to="/leads" active={location.pathname === '/leads'} />
+            <NavItem icon={<CheckSquare size={20} />} label="Tasks" to="/tasks" active={location.pathname === '/tasks'} />
             <NavItem icon={<PieChart size={20} />} label="Analytics" to="/analytics" active={location.pathname === '/analytics'} />
             <NavItem icon={<Settings size={20} />} label="Team Access" to="/users" active={location.pathname === '/users'} />
           </ul>

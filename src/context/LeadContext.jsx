@@ -16,10 +16,12 @@ export const LeadProvider = ({ children }) => {
     if (token) {
       localStorage.setItem('jwt_token', token);
       setIsAuthenticated(true);
-      fetchLeads();
+      fetchLeads(token);
     } else {
       localStorage.removeItem('jwt_token');
       setIsAuthenticated(false);
+      // Auto login as default admin for smooth integration
+      login('admin', 'admin');
     }
   }, [token]);
 
@@ -48,19 +50,17 @@ export const LeadProvider = ({ children }) => {
     setLeads([]);
   };
 
-  const getAuthHeaders = () => ({
+  const getAuthHeaders = (overrideToken) => ({
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    'Authorization': `Bearer ${overrideToken || token}`
   });
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (overrideToken) => {
     try {
-      const response = await fetch(`${API_URL}/leads`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_URL}/leads`, { headers: getAuthHeaders(overrideToken) });
       if (response.ok) {
         const data = await response.json();
         setLeads(data);
-      } else if (response.status === 401) {
-        logout();
       }
     } catch (error) {
       console.error('Error fetching leads:', error);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { TrendingUp, Users, UserPlus, DollarSign, CheckCircle, Calendar, PhoneCall, ListTodo } from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
 import { useTasks } from '../context/TaskContext';
@@ -101,7 +102,7 @@ const Dashboard = () => {
               ))
             )}
           </div>
-          <button className="btn-secondary" style={{ marginTop: '16px', width: '100%' }}>View All Tasks</button>
+          <Link to="/tasks" className="btn-secondary flex-center" style={{ marginTop: '16px', width: '100%', textDecoration: 'none' }}>View All Tasks</Link>
         </div>
       </div>
       

@@ -70,8 +70,46 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        // Auto-create database schema when running in Docker
         dbContext.Database.EnsureCreated(); 
+
+        // Seed initial data if empty
+        if (!dbContext.Users.Any())
+        {
+            dbContext.Users.Add(new LeadManagement.Api.Models.User
+            {
+                Id = Guid.NewGuid().ToString(),
+                Username = "admin",
+                PasswordHash = "admin",
+                Role = "Admin",
+                Name = "Ajay Bhor"
+            });
+            dbContext.Users.Add(new LeadManagement.Api.Models.User
+            {
+                Id = Guid.NewGuid().ToString(),
+                Username = "sarah",
+                PasswordHash = "password123",
+                Role = "Sales Manager",
+                Name = "Sarah Smith"
+            });
+        }
+
+        if (!dbContext.Leads.Any())
+        {
+            dbContext.Leads.AddRange(
+                new LeadManagement.Api.Models.Lead { Id = Guid.NewGuid().ToString(), Name = "Acme Corp Deal", Email = "contact@acme.com", Phone = "+1 555-0192", Company = "Acme Corp", Status = "Qualified", Source = "Website forms", Date = DateTime.UtcNow.AddDays(-2) },
+                new LeadManagement.Api.Models.Lead { Id = Guid.NewGuid().ToString(), Name = "TechFlow Systems", Email = "sales@techflow.io", Phone = "+1 555-0144", Company = "TechFlow", Status = "New", Source = "Social media", Date = DateTime.UtcNow.AddDays(-1) },
+                new LeadManagement.Api.Models.Lead { Id = Guid.NewGuid().ToString(), Name = "Starlight Retail", Email = "info@starlight.com", Phone = "+1 555-0188", Company = "Starlight Inc", Status = "Proposal Sent", Source = "Email campaigns", Date = DateTime.UtcNow }
+            );
+        }
+
+        if (!dbContext.Tasks.Any())
+        {
+            dbContext.Tasks.AddRange(
+                new LeadManagement.Api.Models.TaskItem { Id = Guid.NewGuid().ToString(), Title = "Call Sarah regarding pricing", Type = "Call", DueDate = DateTime.UtcNow.AddDays(1), IsCompleted = false, CreatedAt = DateTime.UtcNow },
+                new LeadManagement.Api.Models.TaskItem { Id = Guid.NewGuid().ToString(), Title = "Product demo with TechFlow", Type = "Meeting", DueDate = DateTime.UtcNow.AddDays(2), IsCompleted = false, CreatedAt = DateTime.UtcNow }
+            );
+        }
+        dbContext.SaveChanges();
     }
     catch (Exception ex)
     {
