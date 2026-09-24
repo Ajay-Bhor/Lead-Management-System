@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { 
   Search, 
   Filter, 
@@ -22,7 +23,9 @@ import {
   ArrowDown, 
   SlidersHorizontal, 
   X, 
-  Plus, 
+  Plus,
+  FileSpreadsheet,
+  ChevronDown,
   PhoneCall, 
   Video, 
   FileText, 
@@ -32,8 +35,7 @@ import {
   ChevronRight,
   Zap,
   MoreVertical,
-  Sliders,
-  ChevronDown
+  Sliders
 } from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
 import AddLeadModal from '../components/AddLeadModal';
@@ -195,6 +197,40 @@ const Leads = () => {
     setFollowUpFrom('');
     setFollowUpTo('');
     setCurrentPage(1);
+  };
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+  // Export Excel (.xlsx) workbook
+  const handleExportExcel = () => {
+    const leadsData = sortedLeads.map(l => ({
+      'Lead ID': l.id || '',
+      'Lead Name': l.name || '',
+      'Company / Organization': l.company || '',
+      'Phone Number': l.phone || '',
+      'Email Address': l.email || '',
+      'Lead Source': l.source || '',
+      'Pipeline Status': l.status || '',
+      'Priority Level': l.priority || 'Normal',
+      'Assigned Sales Rep': l.assignedTo || 'Unassigned',
+      'Created Date': l.createdDate || l.date || '',
+      'Next Follow-up Date': l.followUpDate || '',
+      'Expected Deal Value (₹)': l.dealValue || l.expectedValue || 0,
+      'Requirement Notes': l.notes || ''
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(leadsData);
+
+    if (leadsData.length > 0) {
+      const keys = Object.keys(leadsData[0]);
+      ws['!cols'] = keys.map(key => ({
+        wch: Math.max(key.length + 4, ...leadsData.map(row => String(row[key] ?? '').length + 3))
+      }));
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Filtered Leads');
+    XLSX.writeFile(wb, `Enterprise_Leads_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   // Export CSV
@@ -476,15 +512,136 @@ const Leads = () => {
             </button>
           </div>
 
-          {/* Export Button */}
-          <button
-            onClick={handleExportCSV}
-            className="btn-secondary"
-            style={{ padding: '11px 20px', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#2563eb', borderColor: '#bfdbfe' }}
-          >
-            <Download size={16} />
-            <span>Export Filtered Leads (CSV)</span>
-          </button>
+          {/* Dual Excel & CSV Export Button */}
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              display: 'inline-flex',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(37,99,235,0.15)'
+            }}>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="btn-secondary"
+                style={{
+                  padding: '11px 18px',
+                  fontSize: '0.92rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#2563eb',
+                  borderColor: '#bfdbfe',
+                  borderTopRightRadius: 0,
+                  borderBottomRightRadius: 0,
+                  backgroundColor: '#ffffff'
+                }}
+                title="Download filtered leads as Excel (.xlsx) file"
+              >
+                <FileSpreadsheet size={16} />
+                <span>Export Leads (Excel)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen(prev => !prev)}
+                className="btn-secondary"
+                style={{
+                  padding: '11px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  borderLeft: 'none',
+                  borderColor: '#bfdbfe',
+                  backgroundColor: '#ffffff',
+                  color: '#2563eb',
+                  cursor: 'pointer'
+                }}
+                title="Choose Export Format (Excel / CSV)"
+              >
+                <ChevronDown size={15} />
+              </button>
+            </div>
+
+            {exportMenuOpen && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '6px',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '10px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #e2e8f0',
+                  padding: '6px',
+                  zIndex: 100,
+                  minWidth: '220px'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { handleExportExcel(); setExportMenuOpen(false); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#0f172a',
+                    fontSize: '0.88rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{ padding: '6px', borderRadius: '6px', backgroundColor: '#dcfce7', color: '#16a34a' }}>
+                    <FileSpreadsheet size={16} />
+                  </div>
+                  <div>
+                    <div>Excel Workbook</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400' }}>Full .xlsx spreadsheet</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { handleExportCSV(); setExportMenuOpen(false); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#0f172a',
+                    fontSize: '0.88rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{ padding: '6px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb' }}>
+                    <Download size={16} />
+                  </div>
+                  <div>
+                    <div>CSV Document</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400' }}>Standard .csv format</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -12,13 +13,16 @@ import {
   CheckCircle2, 
   ArrowUpRight, 
   Layers,
-  ChevronDown
+  ChevronDown,
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
 
 const Reports = () => {
   const { leads } = useLeads();
   const [dateRange, setDateRange] = useState('month');
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const safeLeads = Array.isArray(leads) ? leads : [];
   const totalLeadsCount = safeLeads.length || 28;
@@ -27,12 +31,100 @@ const Reports = () => {
   const totalWonRevenue = '₹39.4 Lakh';
   const activePipelineValue = '₹48.5 Lakh';
 
+  // Export Excel (.xlsx) multi-sheet workbook handler
+  const handleExportExcel = () => {
+    // 1. Executive Summary Sheet
+    const summarySheetData = [
+      { 'Metric Indicator': 'Total Active Pipeline Value', 'Consolidated Figure': activePipelineValue },
+      { 'Metric Indicator': 'Total Closed Won Revenue', 'Consolidated Figure': totalWonRevenue },
+      { 'Metric Indicator': 'Overall Organization Win Rate', 'Consolidated Figure': winRate },
+      { 'Metric Indicator': 'Total Leads in Pipeline', 'Consolidated Figure': totalLeadsCount },
+      { 'Metric Indicator': 'Closed Won Deals Count', 'Consolidated Figure': wonLeadsCount },
+      { 'Metric Indicator': 'Selected Reporting Horizon', 'Consolidated Figure': dateRange.toUpperCase() },
+      { 'Metric Indicator': 'Report Generated At', 'Consolidated Figure': new Date().toLocaleString() }
+    ];
+
+    // 2. Team Performance Sheet
+    const repsSheetData = salesRepsData.map(r => ({
+      'Representative': r.name,
+      'Role': r.role,
+      'Territory': r.territory,
+      'Assigned Leads': r.assigned,
+      'Won Deals': r.won,
+      'Pipeline Value': r.pipeline,
+      'Won Revenue': r.wonRevenue,
+      'Win Rate': r.rate,
+      'Average Deal Size': r.avgDeal,
+      'Quota Progress (%)': `${r.quota}%`,
+      'Avg Conversion Velocity': r.avgVelocity
+    }));
+
+    // 3. Monthly Revenue Trend Sheet
+    const trendSheetData = monthlyTrend.map(m => ({
+      'Fiscal Month': m.month,
+      'Total Leads Captured': m.leads,
+      'Won Deals Closed': m.won,
+      'Cumulative Revenue': m.revenue
+    }));
+
+    // 4. Conversion Funnel Sheet
+    const funnelSheetData = funnelStages.map(f => ({
+      'Funnel Stage Description': f.stage,
+      'Stage Lead Volume': f.count,
+      'Stage Conversion Pct': f.pct,
+      'Drop-off vs Previous': f.dropoff
+    }));
+
+    // 5. Source Breakdown Sheet
+    const sourceSheetData = [
+      { 'Lead Channel / Source': 'Direct Sales Outreach', 'Total Leads': 14, 'Won Deals': 5, 'Conversion Rate': '35.7%', 'Revenue Generated': '₹18.2 Lakh' },
+      { 'Lead Channel / Source': 'Website & Inbound Portal', 'Total Leads': 12, 'Won Deals': 3, 'Conversion Rate': '25.0%', 'Revenue Generated': '₹10.5 Lakh' },
+      { 'Lead Channel / Source': 'Channel Partner Network', 'Total Leads': 8, 'Won Deals': 2, 'Conversion Rate': '25.0%', 'Revenue Generated': '₹6.8 Lakh' },
+      { 'Lead Channel / Source': 'Food Expo & Tradeshow', 'Total Leads': 6, 'Won Deals': 1, 'Conversion Rate': '16.7%', 'Revenue Generated': '₹3.9 Lakh' }
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+
+    // Convert datasets to sheets
+    const wsSummary = XLSX.utils.json_to_sheet(summarySheetData);
+    const wsReps = XLSX.utils.json_to_sheet(repsSheetData);
+    const wsTrend = XLSX.utils.json_to_sheet(trendSheetData);
+    const wsFunnel = XLSX.utils.json_to_sheet(funnelSheetData);
+    const wsSource = XLSX.utils.json_to_sheet(sourceSheetData);
+
+    // Auto-fit column widths
+    const applyColumnWidths = (ws, data) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(key => ({
+        wch: Math.max(key.length + 5, ...data.map(row => String(row[key] ?? '').length + 3))
+      }));
+    };
+
+    applyColumnWidths(wsSummary, summarySheetData);
+    applyColumnWidths(wsReps, repsSheetData);
+    applyColumnWidths(wsTrend, trendSheetData);
+    applyColumnWidths(wsFunnel, funnelSheetData);
+    applyColumnWidths(wsSource, sourceSheetData);
+
+    // Append sheets
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Executive Summary');
+    XLSX.utils.book_append_sheet(wb, wsReps, 'Team Performance');
+    XLSX.utils.book_append_sheet(wb, wsTrend, 'Monthly Trend');
+    XLSX.utils.book_append_sheet(wb, wsFunnel, 'Conversion Funnel');
+    XLSX.utils.book_append_sheet(wb, wsSource, 'Source Breakdown');
+
+    // Trigger download of genuine .xlsx file
+    XLSX.writeFile(wb, `Enterprise_Sales_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   // Export CSV handler
-  const handleExport = () => {
+  const handleExportCSV = () => {
     let csv = 'data:text/csv;charset=utf-8,';
-    csv += 'Representative,Role,Assigned Leads,Won Deals,Pipeline Value,Won Revenue,Win Rate,Quota Progress\n';
+    csv += 'Representative,Role,Territory,Assigned Leads,Won Deals,Pipeline Value,Won Revenue,Win Rate,Quota Progress\n';
     salesRepsData.forEach(r => {
-      csv += `"${r.name}","${r.role}",${r.assigned},${r.won},"${r.pipeline}","${r.wonRevenue}","${r.rate}","${r.quota}%"\n`;
+      csv += `"${r.name}","${r.role}","${r.territory}",${r.assigned},${r.won},"${r.pipeline}","${r.wonRevenue}","${r.rate}","${r.quota}%"\n`;
     });
     const uri = encodeURI(csv);
     const link = document.createElement('a');
@@ -177,14 +269,130 @@ const Reports = () => {
             </select>
           </div>
 
-          <button
-            onClick={handleExport}
-            className="btn-primary"
-            style={{ padding: '11px 22px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.92rem' }}
-          >
-            <Download size={18} />
-            <span>Export Report (CSV)</span>
-          </button>
+          {/* Dual Excel & CSV Export Button */}
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              display: 'inline-flex',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              boxShadow: '0 2px 4px rgba(37,99,235,0.2)'
+            }}>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="btn-primary"
+                style={{
+                  padding: '11px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.92rem',
+                  borderTopRightRadius: 0,
+                  borderBottomRightRadius: 0
+                }}
+                title="Download full multi-sheet Excel (.xlsx) workbook"
+              >
+                <FileSpreadsheet size={18} />
+                <span>Export Report (Excel)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen(prev => !prev)}
+                className="btn-primary"
+                style={{
+                  padding: '11px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  borderLeft: '1px solid rgba(255,255,255,0.25)',
+                  cursor: 'pointer'
+                }}
+                title="Select Export Format (Excel / CSV)"
+              >
+                <ChevronDown size={16} />
+              </button>
+            </div>
+
+            {exportMenuOpen && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '10px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #e2e8f0',
+                  padding: '6px',
+                  zIndex: 100,
+                  minWidth: '220px'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { handleExportExcel(); setExportMenuOpen(false); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#0f172a',
+                    fontSize: '0.88rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{ padding: '6px', borderRadius: '6px', backgroundColor: '#dcfce7', color: '#16a34a' }}>
+                    <FileSpreadsheet size={16} />
+                  </div>
+                  <div>
+                    <div>Excel Workbook</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400' }}>Multi-sheet .xlsx format</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { handleExportCSV(); setExportMenuOpen(false); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#0f172a',
+                    fontSize: '0.88rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{ padding: '6px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb' }}>
+                    <Download size={16} />
+                  </div>
+                  <div>
+                    <div>CSV Document</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400' }}>Raw .csv format</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
