@@ -15,14 +15,16 @@ import {
   Layers,
   ChevronDown,
   FileSpreadsheet,
-  FileText
+  FileText,
+  X
 } from 'lucide-react';
 import { useLeads } from '../context/LeadContext';
 
 const Reports = () => {
-  const { leads } = useLeads();
+  const { leads, currentUser } = useLeads();
   const [dateRange, setDateRange] = useState('month');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [downloadToast, setDownloadToast] = useState(null);
 
   const safeLeads = Array.isArray(leads) ? leads : [];
   const totalLeadsCount = safeLeads.length || 28;
@@ -31,109 +33,7 @@ const Reports = () => {
   const totalWonRevenue = '₹39.4 Lakh';
   const activePipelineValue = '₹48.5 Lakh';
 
-  // Export Excel (.xlsx) multi-sheet workbook handler
-  const handleExportExcel = () => {
-    // 1. Executive Summary Sheet
-    const summarySheetData = [
-      { 'Metric Indicator': 'Total Active Pipeline Value', 'Consolidated Figure': activePipelineValue },
-      { 'Metric Indicator': 'Total Closed Won Revenue', 'Consolidated Figure': totalWonRevenue },
-      { 'Metric Indicator': 'Overall Organization Win Rate', 'Consolidated Figure': winRate },
-      { 'Metric Indicator': 'Total Leads in Pipeline', 'Consolidated Figure': totalLeadsCount },
-      { 'Metric Indicator': 'Closed Won Deals Count', 'Consolidated Figure': wonLeadsCount },
-      { 'Metric Indicator': 'Selected Reporting Horizon', 'Consolidated Figure': dateRange.toUpperCase() },
-      { 'Metric Indicator': 'Report Generated At', 'Consolidated Figure': new Date().toLocaleString() }
-    ];
 
-    // 2. Team Performance Sheet
-    const repsSheetData = salesRepsData.map(r => ({
-      'Representative': r.name,
-      'Role': r.role,
-      'Territory': r.territory,
-      'Assigned Leads': r.assigned,
-      'Won Deals': r.won,
-      'Pipeline Value': r.pipeline,
-      'Won Revenue': r.wonRevenue,
-      'Win Rate': r.rate,
-      'Average Deal Size': r.avgDeal,
-      'Quota Progress (%)': `${r.quota}%`,
-      'Avg Conversion Velocity': r.avgVelocity
-    }));
-
-    // 3. Monthly Revenue Trend Sheet
-    const trendSheetData = monthlyTrend.map(m => ({
-      'Fiscal Month': m.month,
-      'Total Leads Captured': m.leads,
-      'Won Deals Closed': m.won,
-      'Cumulative Revenue': m.revenue
-    }));
-
-    // 4. Conversion Funnel Sheet
-    const funnelSheetData = funnelStages.map(f => ({
-      'Funnel Stage Description': f.stage,
-      'Stage Lead Volume': f.count,
-      'Stage Conversion Pct': f.pct,
-      'Drop-off vs Previous': f.dropoff
-    }));
-
-    // 5. Source Breakdown Sheet
-    const sourceSheetData = [
-      { 'Lead Channel / Source': 'Direct Sales Outreach', 'Total Leads': 14, 'Won Deals': 5, 'Conversion Rate': '35.7%', 'Revenue Generated': '₹18.2 Lakh' },
-      { 'Lead Channel / Source': 'Website & Inbound Portal', 'Total Leads': 12, 'Won Deals': 3, 'Conversion Rate': '25.0%', 'Revenue Generated': '₹10.5 Lakh' },
-      { 'Lead Channel / Source': 'Channel Partner Network', 'Total Leads': 8, 'Won Deals': 2, 'Conversion Rate': '25.0%', 'Revenue Generated': '₹6.8 Lakh' },
-      { 'Lead Channel / Source': 'Food Expo & Tradeshow', 'Total Leads': 6, 'Won Deals': 1, 'Conversion Rate': '16.7%', 'Revenue Generated': '₹3.9 Lakh' }
-    ];
-
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-
-    // Convert datasets to sheets
-    const wsSummary = XLSX.utils.json_to_sheet(summarySheetData);
-    const wsReps = XLSX.utils.json_to_sheet(repsSheetData);
-    const wsTrend = XLSX.utils.json_to_sheet(trendSheetData);
-    const wsFunnel = XLSX.utils.json_to_sheet(funnelSheetData);
-    const wsSource = XLSX.utils.json_to_sheet(sourceSheetData);
-
-    // Auto-fit column widths
-    const applyColumnWidths = (ws, data) => {
-      if (!data || data.length === 0) return;
-      const keys = Object.keys(data[0]);
-      ws['!cols'] = keys.map(key => ({
-        wch: Math.max(key.length + 5, ...data.map(row => String(row[key] ?? '').length + 3))
-      }));
-    };
-
-    applyColumnWidths(wsSummary, summarySheetData);
-    applyColumnWidths(wsReps, repsSheetData);
-    applyColumnWidths(wsTrend, trendSheetData);
-    applyColumnWidths(wsFunnel, funnelSheetData);
-    applyColumnWidths(wsSource, sourceSheetData);
-
-    // Append sheets
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Executive Summary');
-    XLSX.utils.book_append_sheet(wb, wsReps, 'Team Performance');
-    XLSX.utils.book_append_sheet(wb, wsTrend, 'Monthly Trend');
-    XLSX.utils.book_append_sheet(wb, wsFunnel, 'Conversion Funnel');
-    XLSX.utils.book_append_sheet(wb, wsSource, 'Source Breakdown');
-
-    // Trigger download of genuine .xlsx file
-    XLSX.writeFile(wb, `Enterprise_Sales_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
-  };
-
-  // Export CSV handler
-  const handleExportCSV = () => {
-    let csv = 'data:text/csv;charset=utf-8,';
-    csv += 'Representative,Role,Territory,Assigned Leads,Won Deals,Pipeline Value,Won Revenue,Win Rate,Quota Progress\n';
-    salesRepsData.forEach(r => {
-      csv += `"${r.name}","${r.role}","${r.territory}",${r.assigned},${r.won},"${r.pipeline}","${r.wonRevenue}","${r.rate}","${r.quota}%"\n`;
-    });
-    const uri = encodeURI(csv);
-    const link = document.createElement('a');
-    link.href = uri;
-    link.download = `Enterprise_Sales_Report_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   // Monthly trend data
   const monthlyTrend = [
@@ -210,6 +110,236 @@ const Reports = () => {
       avgVelocity: '7.9 Days'
     }
   ];
+
+  // Helper for formatted timestamp
+  const getFormattedTimestamp = () => {
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    return {
+      display: `${dateFormatted}, ${timeFormatted} IST`,
+      fileDate: now.toISOString().slice(0, 10),
+      fileTime: timeFormatted.replace(/:/g, '-').replace(/\s+/g, '_')
+    };
+  };
+
+  // Export Excel (.xlsx) well-structured multi-sheet workbook handler
+  const handleExportExcel = () => {
+    const ts = getFormattedTimestamp();
+    const horizonLabel = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : dateRange === 'month' ? 'Current Month (September 2026)' : dateRange === 'quarter' ? 'Current Quarter (Q3 2026)' : 'Annual Cycle (2026)';
+    const preparedBy = `${currentUser?.name || 'Ajay Bhor'} (${currentUser?.role || 'System Administrator'})`;
+
+    // 1. MASTER EXECUTIVE INTELLIGENCE SHEET (AOA Structured Layout)
+    const masterAOA = [
+      ['URJA FOODS & AGRO ENTERPRISES'],
+      ['ENTERPRISE LEAD MANAGEMENT SYSTEM (LMS) - EXECUTIVE INTELLIGENCE REPORT'],
+      ['CONFIDENTIAL & PROPRIETARY SALES AUDIT'],
+      [],
+      ['REPORT METADATA & PARAMETERS'],
+      ['Report Generated At', ts.display],
+      ['Report Scope / Horizon', horizonLabel],
+      ['Authorized Officer', preparedBy],
+      ['Total Active Leads Audited', totalLeadsCount],
+      ['Active Pipeline Valuation', activePipelineValue],
+      ['Realized Won Revenue', totalWonRevenue],
+      ['Overall Organization Win Rate', winRate],
+      [],
+      ['========================================================================================================'],
+      ['SECTION 1: KEY PERFORMANCE INDICATORS (KPIs)'],
+      ['========================================================================================================'],
+      ['KPI Metric Indicator', 'Consolidated Value', 'Target Benchmark', 'Health / Status Assessment'],
+      ['Overall Win Rate', winRate, '35.0% Target', 'Exceeds Benchmark (+4.2%)'],
+      ['Total Active Pipeline Value', activePipelineValue, '₹40.0 Lakh Target', 'Optimal Volume (+21.25%)'],
+      ['Total Closed Won Revenue', totalWonRevenue, '₹35.0 Lakh Target', 'Above Quota (+12.57%)'],
+      ['Closed Won Deal Count', `${wonLeadsCount} Closed Deals`, '10 Deals Target', 'Goal Surpassed (110%)'],
+      ['Active Pipeline Deals', `${totalLeadsCount - wonLeadsCount} Deals in Flight`, '25 Deals Benchmark', 'Strong Pipeline'],
+      ['Average Response Velocity', '1 Hour 15 Mins', '< 2 Hours SLA', 'SLA Compliant (Optimal)'],
+      [],
+      ['========================================================================================================'],
+      ['SECTION 2: SALES TEAM PERFORMANCE LEADERBOARD'],
+      ['========================================================================================================'],
+      ['Representative', 'Role / Title', 'Assigned Territory', 'Leads Assigned', 'Won Deals', 'Pipeline Value', 'Won Revenue', 'Win Rate (%)', 'Avg Deal Size', 'Quota Progress (%)', 'Avg Velocity'],
+      ...salesRepsData.map(r => [
+        r.name,
+        r.role,
+        r.territory,
+        r.assigned,
+        r.won,
+        r.pipeline,
+        r.wonRevenue,
+        r.rate,
+        r.avgDeal,
+        `${r.quota}%`,
+        r.avgVelocity
+      ]),
+      [
+        'TOTAL CONSOLIDATED TEAM',
+        'Sales Department',
+        'All India Jurisdictions',
+        salesRepsData.reduce((acc, r) => acc + r.assigned, 0),
+        salesRepsData.reduce((acc, r) => acc + r.won, 0),
+        activePipelineValue,
+        totalWonRevenue,
+        winRate,
+        '₹1.52 Lakh',
+        '101.5% Avg',
+        '7.4 Days'
+      ],
+      [],
+      ['========================================================================================================'],
+      ['SECTION 3: CONVERSION FUNNEL VELOCITY & DROP-OFF AUDIT'],
+      ['========================================================================================================'],
+      ['Funnel Stage Index & Description', 'Leads Reaching Stage', 'Cumulative Conversion Rate', 'Stage Drop-off Rate', 'Audit Status'],
+      ...funnelStages.map(f => [
+        f.stage,
+        f.count,
+        f.pct,
+        f.dropoff,
+        f.dropoff === '-' ? 'Benchmark' : 'Normal Drop-off'
+      ]),
+      [],
+      ['========================================================================================================'],
+      ['SECTION 4: MONTHLY REVENUE & CONVERSION TRAJECTORY'],
+      ['========================================================================================================'],
+      ['Fiscal Month', 'Inbound Leads Captured', 'Won Contracts Closed', 'Closed Revenue', 'Month Conversion %'],
+      ...monthlyTrend.map(m => [
+        m.month,
+        m.leads,
+        m.won,
+        m.revenue,
+        `${((m.won / m.leads) * 100).toFixed(1)}%`
+      ]),
+      [],
+      ['========================================================================================================'],
+      ['SECTION 5: LEAD ACQUISITION SOURCE PERFORMANCE'],
+      ['========================================================================================================'],
+      ['Channel Source', 'Leads Captured', 'Deals Won', 'Conversion Rate (%)', 'Realized Revenue', 'Channel Efficiency'],
+      ['Direct Sales Outreach', 14, 5, '35.7%', '₹18.2 Lakh', 'High Value / Highest Return'],
+      ['Website & Inbound Portal', 12, 3, '25.0%', '₹10.5 Lakh', 'Steady Organic Demand'],
+      ['Channel Partner Network', 8, 2, '25.0%', '₹6.8 Lakh', 'Consistent Volume'],
+      ['Food Expo & Tradeshow', 6, 1, '16.7%', '₹3.9 Lakh', 'Longer Sales Cycle'],
+      ['TOTAL CHANNELS', 40, 11, '27.5%', '₹39.4 Lakh', 'Diversified Sourcing']
+    ];
+
+    // 2. LIVE LEADS REGISTRY SHEET
+    const leadsRegistryAOA = [
+      ['URJA FOODS - CURRENT LIVE LEADS & PIPELINE REGISTRY'],
+      [`Report Generated At: ${ts.display} | Total Leads: ${safeLeads.length}`],
+      [],
+      ['S.No', 'Lead ID', 'Lead / Client Name', 'Company Name', 'Contact Phone', 'Email Address', 'Lead Source', 'Pipeline Status', 'Priority', 'Assigned Rep', 'Expected Value (₹)', 'Creation Date', 'Next Follow-up', 'Strategic Notes'],
+      ...safeLeads.map((l, index) => [
+        index + 1,
+        l.id || `LMS-${1000 + index}`,
+        l.name || '',
+        l.company || '',
+        l.phone || '',
+        l.email || '',
+        l.source || '',
+        l.status || '',
+        l.priority || 'Normal',
+        l.assignedTo || 'Unassigned',
+        l.dealValue || l.expectedValue || 0,
+        l.createdDate || l.date || '',
+        l.followUpDate || '',
+        l.notes || ''
+      ]),
+      [
+        'TOTALS',
+        `${safeLeads.length} Leads`,
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        safeLeads.reduce((sum, l) => sum + (parseFloat(l.dealValue || l.expectedValue) || 0), 0),
+        '-',
+        '-',
+        '-'
+      ]
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+
+    const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
+    wsMaster['!cols'] = [
+      { wch: 38 }, { wch: 28 }, { wch: 28 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 18 }
+    ];
+
+    const wsRegistry = XLSX.utils.aoa_to_sheet(leadsRegistryAOA);
+    wsRegistry['!cols'] = [
+      { wch: 8 }, { wch: 16 }, { wch: 26 }, { wch: 26 }, { wch: 16 }, { wch: 26 }, { wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 35 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, wsMaster, 'Executive Overview');
+    XLSX.utils.book_append_sheet(wb, wsRegistry, 'Live Leads Registry');
+
+    const fileName = `Urja_Foods_LMS_Executive_Sales_Report_${ts.fileDate}_${ts.fileTime}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    setDownloadToast({
+      format: 'Excel (.xlsx)',
+      filename: fileName,
+      time: ts.display
+    });
+    setTimeout(() => setDownloadToast(null), 6000);
+  };
+
+  // Export CSV handler
+  const handleExportCSV = () => {
+    const ts = getFormattedTimestamp();
+    const horizonLabel = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : dateRange === 'month' ? 'Current Month (September 2026)' : dateRange === 'quarter' ? 'Current Quarter (Q3 2026)' : 'Annual Cycle (2026)';
+    const preparedBy = `${currentUser?.name || 'Ajay Bhor'} (${currentUser?.role || 'System Administrator'})`;
+
+    let csv = '# ====================================================================\n';
+    csv += '# URJA FOODS & AGRO ENTERPRISES - LEAD MANAGEMENT SYSTEM\n';
+    csv += '# EXECUTIVE REVENUE & PIPELINE INTELLIGENCE REPORT\n';
+    csv += `# GENERATED AT: ${ts.display}\n`;
+    csv += `# GENERATED BY: ${preparedBy}\n`;
+    csv += `# REPORTING HORIZON: ${horizonLabel}\n`;
+    csv += `# TOTAL PIPELINE VALUE: ${activePipelineValue} | WON REVENUE: ${totalWonRevenue} | WIN RATE: ${winRate}\n`;
+    csv += '# ====================================================================\n\n';
+
+    csv += 'Representative,Role,Assigned Territory,Assigned Leads,Won Deals,Pipeline Value,Won Revenue,Win Rate,Avg Deal Size,Quota Progress,Avg Velocity\n';
+    salesRepsData.forEach(r => {
+      csv += `"${r.name}","${r.role}","${r.territory}",${r.assigned},${r.won},"${r.pipeline}","${r.wonRevenue}","${r.rate}","${r.avgDeal}","${r.quota}%","${r.avgVelocity}"\n`;
+    });
+    
+    // Add total row
+    csv += `"TOTAL CONSOLIDATED TEAM","Sales Dept","All Territories",${salesRepsData.reduce((acc, r) => acc + r.assigned, 0)},${salesRepsData.reduce((acc, r) => acc + r.won, 0)},"${activePipelineValue}","${totalWonRevenue}","${winRate}","₹1.52 Lakh","101.5%","7.4 Days"\n\n`;
+
+    csv += '# SECTION: MONTHLY REVENUE TRAJECTORY\n';
+    csv += 'Fiscal Month,Inbound Leads Captured,Won Contracts Closed,Cumulative Revenue\n';
+    monthlyTrend.forEach(m => {
+      csv += `"${m.month}",${m.leads},${m.won},"${m.revenue}"\n`;
+    });
+    csv += '\n';
+
+    csv += '# SECTION: CONVERSION FUNNEL DROP-OFF AUDIT\n';
+    csv += 'Funnel Stage,Lead Volume,Cumulative Conversion %,Drop-off Rate\n';
+    funnelStages.forEach(f => {
+      csv += `"${f.stage}",${f.count},"${f.pct}","${f.dropoff}"\n`;
+    });
+
+    const uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    const link = document.createElement('a');
+    link.href = uri;
+    const fileName = `Urja_Foods_LMS_Executive_Sales_Report_${ts.fileDate}_${ts.fileTime}.csv`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setDownloadToast({
+      format: 'CSV (.csv)',
+      filename: fileName,
+      time: ts.display
+    });
+    setTimeout(() => setDownloadToast(null), 6000);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
@@ -793,6 +923,52 @@ const Reports = () => {
           </table>
         </div>
       </div>
+
+      {/* Download Completion Toast Notification */}
+      {downloadToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          backgroundColor: '#0f172a',
+          color: '#ffffff',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '14px',
+          maxWidth: '440px',
+          backdropFilter: 'blur(8px)'
+        }}>
+          <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: '#10b981', color: '#ffffff', flexShrink: 0 }}>
+            <CheckCircle2 size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '700', fontSize: '0.92rem', marginBottom: '2px', color: '#f8fafc' }}>
+              Structured Report Exported!
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              Well-structured <strong>{downloadToast.format}</strong> generated and downloaded:
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#60a5fa', fontFamily: 'monospace', marginTop: '4px', wordBreak: 'break-all' }}>
+              {downloadToast.filename}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '6px' }}>
+              Downloaded at: {downloadToast.time}
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setDownloadToast(null)} 
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -43,7 +43,8 @@ import EditLeadModal from '../components/EditLeadModal';
 
 const Leads = () => {
   const navigate = useNavigate();
-  const { leads, deleteLead, openEditLead, updateLeadStatus, reassignLead, addActivity, simulateLeadCapture } = useLeads();
+  const { leads, deleteLead, openEditLead, updateLeadStatus, reassignLead, addActivity, simulateLeadCapture, currentUser } = useLeads();
+  const [downloadToast, setDownloadToast] = useState(null);
 
   // Search input state
   const [searchTerm, setSearchTerm] = useState('');
@@ -201,52 +202,125 @@ const Leads = () => {
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
-  // Export Excel (.xlsx) workbook
+  const getFormattedTimestamp = () => {
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    return {
+      display: `${dateFormatted}, ${timeFormatted} IST`,
+      fileDate: now.toISOString().slice(0, 10),
+      fileTime: timeFormatted.replace(/:/g, '-').replace(/\s+/g, '_')
+    };
+  };
+
+  // Export Excel (.xlsx) well-structured workbook
   const handleExportExcel = () => {
-    const leadsData = sortedLeads.map(l => ({
-      'Lead ID': l.id || '',
-      'Lead Name': l.name || '',
-      'Company / Organization': l.company || '',
-      'Phone Number': l.phone || '',
-      'Email Address': l.email || '',
-      'Lead Source': l.source || '',
-      'Pipeline Status': l.status || '',
-      'Priority Level': l.priority || 'Normal',
-      'Assigned Sales Rep': l.assignedTo || 'Unassigned',
-      'Created Date': l.createdDate || l.date || '',
-      'Next Follow-up Date': l.followUpDate || '',
-      'Expected Deal Value (₹)': l.dealValue || l.expectedValue || 0,
-      'Requirement Notes': l.notes || ''
-    }));
+    const ts = getFormattedTimestamp();
+    const totalPipelineValue = sortedLeads.reduce((sum, l) => sum + (parseFloat(l.dealValue || l.expectedValue) || 0), 0);
+
+    const leadsAOA = [
+      ['URJA FOODS & AGRO ENTERPRISES'],
+      ['ENTERPRISE LEAD MANAGEMENT SYSTEM (LMS) - FILTERED LEADS AUDIT'],
+      ['CONFIDENTIAL CLIENT & PIPELINE REGISTRY'],
+      [],
+      ['REPORT PARAMETERS & METADATA'],
+      ['Report Generated At', ts.display],
+      ['Audited By', `${currentUser?.name || 'Ajay Bhor'} (${currentUser?.role || 'Admin'})`],
+      ['Total Leads in Filtered View', sortedLeads.length],
+      ['Total Aggregate Deal Value', `₹${(totalPipelineValue / 100000).toFixed(2)} Lakh`],
+      ['Active Filter: Status', filterStatus],
+      ['Active Filter: Source', filterSource],
+      ['Active Filter: Priority', filterPriority],
+      ['Active Filter: Assigned Rep', filterAssignedTo],
+      [],
+      ['S.No', 'Lead ID', 'Lead / Client Name', 'Company Name', 'Contact Phone', 'Email Address', 'Lead Source', 'Pipeline Status', 'Priority', 'Assigned Rep', 'Expected Deal Value (₹)', 'Creation Date', 'Next Follow-up Date', 'Strategic Requirement Notes'],
+      ...sortedLeads.map((l, index) => [
+        index + 1,
+        l.id || `LMS-${1000 + index}`,
+        l.name || '',
+        l.company || '',
+        l.phone || '',
+        l.email || '',
+        l.source || '',
+        l.status || '',
+        l.priority || 'Normal',
+        l.assignedTo || 'Unassigned',
+        l.dealValue || l.expectedValue || 0,
+        l.createdDate || l.date || '',
+        l.followUpDate || '',
+        l.notes || ''
+      ]),
+      [
+        'TOTALS',
+        `${sortedLeads.length} Leads`,
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        totalPipelineValue,
+        '-',
+        '-',
+        '-'
+      ]
+    ];
 
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(leadsData);
-
-    if (leadsData.length > 0) {
-      const keys = Object.keys(leadsData[0]);
-      ws['!cols'] = keys.map(key => ({
-        wch: Math.max(key.length + 4, ...leadsData.map(row => String(row[key] ?? '').length + 3))
-      }));
-    }
+    const ws = XLSX.utils.aoa_to_sheet(leadsAOA);
+    ws['!cols'] = [
+      { wch: 8 }, { wch: 16 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 20 }, { wch: 22 }, { wch: 16 }, { wch: 18 }, { wch: 35 }
+    ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Filtered Leads');
-    XLSX.writeFile(wb, `Enterprise_Leads_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const fileName = `Urja_Foods_Leads_Report_${ts.fileDate}_${ts.fileTime}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    setDownloadToast({
+      format: 'Excel (.xlsx)',
+      filename: fileName,
+      time: ts.display
+    });
+    setTimeout(() => setDownloadToast(null), 6000);
   };
 
   // Export CSV
   const handleExportCSV = () => {
-    let csv = 'data:text/csv;charset=utf-8,';
-    csv += 'Lead Name,Company,Phone,Email,Source,Status,Priority,Assigned To,Created Date,Follow-up Date,Expected Value\n';
-    sortedLeads.forEach(l => {
-      csv += `"${l.name}","${l.company || ''}","${l.phone || ''}","${l.email || ''}","${l.source || ''}","${l.status}","${l.priority || 'Normal'}","${l.assignedTo || ''}","${l.createdDate || l.date || ''}","${l.followUpDate || ''}","${l.dealValue || l.expectedValue || 0}"\n`;
+    const ts = getFormattedTimestamp();
+    const totalPipelineValue = sortedLeads.reduce((sum, l) => sum + (parseFloat(l.dealValue || l.expectedValue) || 0), 0);
+
+    let csv = '# ====================================================================\n';
+    csv += '# URJA FOODS & AGRO ENTERPRISES - LEAD MANAGEMENT SYSTEM\n';
+    csv += '# FILTERED LEADS AUDIT & REGISTRY REPORT\n';
+    csv += `# GENERATED AT: ${ts.display}\n`;
+    csv += `# GENERATED BY: ${currentUser?.name || 'Ajay Bhor'} (${currentUser?.role || 'Admin'})\n`;
+    csv += `# FILTER CRITERIA: Status=${filterStatus}, Source=${filterSource}, Priority=${filterPriority}\n`;
+    csv += `# TOTAL FILTERED LEADS: ${sortedLeads.length} | TOTAL EXPECTED VALUE: ₹${totalPipelineValue}\n`;
+    csv += '# ====================================================================\n\n';
+
+    csv += 'S.No,Lead ID,Lead Name,Company,Phone,Email,Source,Status,Priority,Assigned To,Expected Value (INR),Created Date,Follow-up Date,Notes\n';
+    sortedLeads.forEach((l, idx) => {
+      csv += `${idx + 1},"${l.id || ''}","${l.name}","${l.company || ''}","${l.phone || ''}","${l.email || ''}","${l.source || ''}","${l.status}","${l.priority || 'Normal'}","${l.assignedTo || ''}",${l.dealValue || l.expectedValue || 0},"${l.createdDate || l.date || ''}","${l.followUpDate || ''}","${(l.notes || '').replace(/"/g, '""')}"\n`;
     });
-    const encoded = encodeURI(csv);
+    csv += `TOTALS,"${sortedLeads.length} Leads",-,-,-,-,-,-,-,-,${totalPipelineValue},-,-,-\n`;
+
+    const encoded = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
     const link = document.createElement('a');
     link.setAttribute('href', encoded);
-    link.setAttribute('download', `Enterprise_Leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    const fileName = `Urja_Foods_Leads_Report_${ts.fileDate}_${ts.fileTime}.csv`;
+    link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    setDownloadToast({
+      format: 'CSV (.csv)',
+      filename: fileName,
+      time: ts.display
+    });
+    setTimeout(() => setDownloadToast(null), 6000);
   };
 
   // Save Quick Activity
@@ -1162,6 +1236,52 @@ const Leads = () => {
 
       {/* Edit Lead Modal */}
       <EditLeadModal />
+
+      {/* Download Completion Toast Notification */}
+      {downloadToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          backgroundColor: '#0f172a',
+          color: '#ffffff',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '14px',
+          maxWidth: '440px',
+          backdropFilter: 'blur(8px)'
+        }}>
+          <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: '#10b981', color: '#ffffff', flexShrink: 0 }}>
+            <CheckSquare size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '700', fontSize: '0.92rem', marginBottom: '2px', color: '#f8fafc' }}>
+              Structured Report Exported!
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+              Well-structured <strong>{downloadToast.format}</strong> generated and downloaded:
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#60a5fa', fontFamily: 'monospace', marginTop: '4px', wordBreak: 'break-all' }}>
+              {downloadToast.filename}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '6px' }}>
+              Downloaded at: {downloadToast.time}
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setDownloadToast(null)} 
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
