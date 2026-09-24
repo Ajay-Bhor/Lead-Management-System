@@ -12,12 +12,24 @@ dist
 dist-ssr
 *.local
 
+# .NET & C# build artifacts
+[Bb]in/
+[Oo]bj/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
+*.user
+*.userosscache
+*.sln.docstates
 *.ntvs*
 *.njsproj
 *.sln

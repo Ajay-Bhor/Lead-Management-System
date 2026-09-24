@@ -4,13 +4,16 @@ import App from './App.jsx'
 import './index.css'
 import { LeadProvider } from './context/LeadContext.jsx'
 import { TaskProvider } from './context/TaskContext.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <LeadProvider>
-      <TaskProvider>
-        <App />
-      </TaskProvider>
-    </LeadProvider>
+    <ErrorBoundary>
+      <LeadProvider>
+        <TaskProvider>
+          <App />
+        </TaskProvider>
+      </LeadProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

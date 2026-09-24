@@ -12,5 +12,6 @@ namespace LeadManagement.Api.Data
         public DbSet<Lead> Leads { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<TaskItem> Tasks { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
     }
 }

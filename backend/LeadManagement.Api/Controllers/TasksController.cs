@@ -24,6 +24,33 @@ namespace LeadManagement.Api.Controllers
             return await _context.Tasks.OrderBy(t => t.DueDate).ToListAsync();
         }
 
+        [HttpGet("reminders")]
+        public async Task<ActionResult<IEnumerable<object>>> GetReminders()
+        {
+            var now = DateTime.UtcNow;
+            var upcomingLimit = now.AddDays(3);
+
+            var pendingTasks = await _context.Tasks
+                .Where(t => !t.IsCompleted)
+                .OrderBy(t => t.DueDate)
+                .ToListAsync();
+
+            var reminders = pendingTasks.Select(t => new
+            {
+                t.Id,
+                t.Title,
+                t.Type,
+                t.DueDate,
+                t.LeadId,
+                t.IsCompleted,
+                IsOverdue = t.DueDate < now.Date,
+                IsDueToday = t.DueDate.Date == now.Date,
+                Urgency = t.DueDate < now.Date ? "High" : (t.DueDate.Date == now.Date ? "Medium" : "Normal")
+            });
+
+            return Ok(reminders);
+        }
+
         [HttpPost]
         public async Task<ActionResult<TaskItem>> PostTask(TaskItem task)
         {

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LeadManagement.Api.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
@@ -19,22 +19,42 @@ namespace LeadManagement.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<object>>> GetUsers()
         {
-            // Do not return password hashes in real apps!
-            return await _context.Users.ToListAsync();
+            var users = await _context.Users
+                .Select(u => new {
+                    u.Id,
+                    u.Username,
+                    u.Name,
+                    u.Role
+                })
+                .ToListAsync();
+            return Ok(users);
         }
 
+        /// <summary>
+        /// Only System Administrators are authorized to create new users.
+        /// </summary>
+        [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
+        public async Task<ActionResult<object>> PostUser(User user)
         {
             user.Id = Guid.NewGuid().ToString();
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+            return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, new {
+                user.Id,
+                user.Username,
+                user.Name,
+                user.Role
+            });
         }
 
+        /// <summary>
+        /// Only System Administrators are authorized to delete users.
+        /// </summary>
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
@@ -51,3 +71,4 @@ namespace LeadManagement.Api.Controllers
         }
     }
 }
+

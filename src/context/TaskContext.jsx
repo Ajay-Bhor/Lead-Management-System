@@ -7,18 +7,16 @@ export const useTasks = () => useContext(TaskContext);
 
 const API_URL = 'http://localhost:8080/api';
 
-const initialTasks = [
-  { id: '1', title: 'Call Sarah regarding pricing', type: 'Call', dueDate: new Date().toISOString(), leadId: '1', isCompleted: false },
-  { id: '2', title: 'Product demo with TechFlow', type: 'Meeting', dueDate: new Date(Date.now() + 86400000).toISOString(), leadId: '1', isCompleted: false },
-  { id: '3', title: 'Follow-up email', type: 'Follow-up', dueDate: new Date(Date.now() - 86400000).toISOString(), leadId: '2', isCompleted: true },
-];
-
 export const TaskProvider = ({ children }) => {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const { isAuthenticated } = useLeads();
 
   useEffect(() => {
-    fetchTasks();
+    if (isAuthenticated) {
+      fetchTasks();
+      fetchReminders();
+    }
   }, [isAuthenticated]);
 
   const getAuthHeaders = () => {
@@ -34,12 +32,22 @@ export const TaskProvider = ({ children }) => {
       const response = await fetch(`${API_URL}/tasks`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
-        if (data && data.length > 0) {
-          setTasks(data);
-        }
+        setTasks(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Error fetching tasks from API:', error);
+    }
+  };
+
+  const fetchReminders = async () => {
+    try {
+      const response = await fetch(`${API_URL}/tasks/reminders`, { headers: getAuthHeaders() });
+      if (response.ok) {
+        const data = await response.json();
+        setReminders(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching reminders:', error);
     }
   };
 
@@ -53,7 +61,8 @@ export const TaskProvider = ({ children }) => {
       if (response.ok) {
         const newTask = await response.json();
         setTasks(prev => [newTask, ...prev]);
-        return;
+        fetchReminders();
+        return newTask;
       }
     } catch (error) {
       console.error('Error creating task via API:', error);
@@ -65,6 +74,7 @@ export const TaskProvider = ({ children }) => {
       isCompleted: false,
     };
     setTasks(prev => [newTask, ...prev]);
+    return newTask;
   };
 
   const completeTask = async (id) => {
@@ -73,10 +83,13 @@ export const TaskProvider = ({ children }) => {
         method: 'PUT',
         headers: getAuthHeaders()
       });
+      setTasks(prev => prev.map(task => task.id === id ? { ...task, isCompleted: true } : task));
+      setReminders(prev => prev.filter(r => r.id !== id));
     } catch (error) {
       console.error('Error completing task via API:', error);
+      setTasks(prev => prev.map(task => task.id === id ? { ...task, isCompleted: true } : task));
+      setReminders(prev => prev.filter(r => r.id !== id));
     }
-    setTasks(prev => prev.map(task => task.id === id ? { ...task, isCompleted: true } : task));
   };
 
   const deleteTask = async (id) => {
@@ -85,14 +98,17 @@ export const TaskProvider = ({ children }) => {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
+      setTasks(prev => prev.filter(task => task.id !== id));
+      setReminders(prev => prev.filter(r => r.id !== id));
     } catch (error) {
       console.error('Error deleting task via API:', error);
+      setTasks(prev => prev.filter(task => task.id !== id));
+      setReminders(prev => prev.filter(r => r.id !== id));
     }
-    setTasks(prev => prev.filter(task => task.id !== id));
   };
 
   return (
-    <TaskContext.Provider value={{ tasks, addTask, completeTask, deleteTask, fetchTasks }}>
+    <TaskContext.Provider value={{ tasks, reminders, addTask, completeTask, deleteTask, fetchTasks, fetchReminders }}>
       {children}
     </TaskContext.Provider>
   );
